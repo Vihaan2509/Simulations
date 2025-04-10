@@ -62,14 +62,20 @@
     </div>
 
     <!-- 3D Gravity Simulation Section -->
+    
     <div class="simulation-container">
         <h2>Planetary Orbit (3D Newtonian Gravity)</h2>
+        <p>Visualizing orbit + Conceptual "Spacetime Well". Use mouse to navigate.</p>
         <!-- Container for Three.js Canvas -->
         <div id="gravityContainer" class="threejs-container"></div>
          <div class="controls">
             <button id="startOrbitBtn">Start</button>
             <button id="stopOrbitBtn">Stop</button>
             <button id="resetOrbitBtn">Reset</button>
+            <!-- Added Checkbox Back -->
+            <label style="margin-left: 15px;">
+                <input type="checkbox" id="showSpacetimeCheck" checked> Show Spacetime Grid
+            </label>
         </div>
     </div>
 
