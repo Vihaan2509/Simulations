@@ -2,84 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Physics Simulations (3D)</title>
-    <style>
-        body { font-family: sans-serif; line-height: 1.5; padding: 10px; background-color: #f4f4f4; margin: 0; /* Removed overflow:hidden for now */ }
-        h1, h2 { text-align: center; color: #333; }
-        .simulation-container {
-            background-color: #fff;
-            border: 1px solid #ccc;
-            padding: 15px;
-            margin-bottom: 20px;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
-            text-align: center;
-            display: flex; /* Use flexbox for layout */
-            flex-direction: column; /* Stack title, container, controls */
-            align-items: center; /* Center items horizontally */
-        }
-         /* Style for the 3D containers */
-        .threejs-container { /* Shared style for both 3D views */
-            width: 80vw; /* Responsive width */
-            height: 50vh; /* Responsive height (adjust as needed) */
-            max-width: 600px; /* Max size */
-            max-height: 400px;
-            margin: 10px 0; /* Margin top/bottom */
-            border: 1px solid black;
-            position: relative;
-            background-color: #1a1a2e; /* Default dark background */
-        }
-        button {
-            padding: 8px 15px;
-            margin: 5px;
-            cursor: pointer;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        .controls { margin-top: 10px; }
-        p { text-align: center; }
-    </style>
-</head>
-<body>
-
-    <h1>Physics Simulations (3D)</h1>
-     <p>Use mouse (left: rotate, middle: zoom, right: pan) to control views.</p>
-
-    <!-- 3D Solenoid Simulation Section -->
-    <div class="simulation-container">
-        <h2>Solenoid Magnetic Field (Conceptual 3D)</h2>
-        <!-- Container for Three.js Canvas -->
-        <div id="solenoidContainer" class="threejs-container"></div>
-         <div class="controls">
-             <!-- Add controls later if needed -->
-             <p>Conceptual 3D view of solenoid coil and field lines.</p>
-        </div>
-    </div>
-
-    <!-- 3D Gravity Simulation Section -->
-    
-    <div class="simulation-container">
-        <h2>Planetary Orbit (3D Newtonian Gravity)</h2>
-        <p>Visualizing orbit + Conceptual "Spacetime Well". Use mouse to navigate.</p>
-        <!-- Container for Three.js Canvas -->
-        <div id="gravityContainer" class="threejs-container"></div>
-         <div class="controls">
-            <button id="startOrbitBtn">Start</button>
-            <button id="stopOrbitBtn">Stop</button>
-            <button id="resetOrbitBtn">Reset</button>
-            <!-- Added Checkbox Back -->
-            <label style="margin-left: 15px;">
-                <input type="checkbox" id="showSpacetimeCheck" checked> Show Spacetime Grid
-            </label>
-        </div>
-    </div>
-
-    <!-- Include Three.js library and OrbitControls -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Fullscreen Gravity Simulation</title>
+    <!-- Link the stylesheet -->
+    <link rel="stylesheet" href="style.css">
+    <!-- Three.js Import Map -->
     <script type="importmap">
         {
             "imports": {
@@ -88,10 +15,14 @@
             }
         }
     </script>
+</head>
+<body>
+    <!-- Container for the Three.js Canvas -->
+    <div id="gravityContainer">
+        <!-- Canvas will be inserted here by gravity3d.js -->
+    </div>
 
-    <!-- Include JavaScript modules -->
-    <script type="module" src="solenoid3d.js"></script>
+    <!-- Include the Gravity JavaScript Module -->
     <script type="module" src="gravity3d.js"></script>
-
 </body>
 </html>
