@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Gravity Simulation</title>
+    <!-- Link the shared stylesheet -->
+    <link rel="stylesheet" href="style.css">
+    <!-- Three.js Import Map -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.161.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.161.0/examples/jsm/"
+            }
+        }
+    </script>
+    <style>
+        /* Page specific styles if needed */
+         #gravityContainer {
+             background-color: #000015; /* Specific darker background for gravity */
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Physics Simulations</h1>
+
+    <nav>
+        <a href="solenoid.html">Solenoid</a>
+        <a href="gravity.html" class="active">Gravity / Orbit</a>
+        <!-- Add links to other pages if you create more -->
+    </nav>
+
+    <div class="simulation-container">
+        <h2>Planetary Orbit & Spacetime Well (3D)</h2>
+         <p class="description">
+            A 3D simulation of a planet orbiting a star based on Newtonian gravity.
+            Includes a conceptual visualization of a spacetime "well" created by the star's mass.
+            Use mouse controls to navigate and buttons to control the simulation.
+        </p>
+
+        <!-- Container for the Three.js Canvas -->
+        <div id="gravityContainer" class="threejs-container">
+            <!-- Canvas will be inserted here by gravity3d.js -->
+        </div>
+
+         <div class="controls">
+            <button id="startOrbitBtn">Start</button>
+            <button id="stopOrbitBtn">Stop</button>
+            <button id="resetOrbitBtn">Reset</button>
+            <label>
+                <input type="checkbox" id="showSpacetimeCheck" checked> Show Spacetime Grid
+            </label>
+        </div>
+    </div>
+
+    <!-- Include the Gravity JavaScript Module -->
+    <script type="module" src="gravity3d.js"></script>
+
+</body>
+</html>
