@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Solenoid Simulation</title>
+    <!-- Link the shared stylesheet -->
+    <link rel="stylesheet" href="style.css">
+    <!-- Three.js Import Map -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.161.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.161.0/examples/jsm/"
+            }
+        }
+    </script>
+    <style>
+        /* Page specific styles if needed */
+        #solenoidContainer {
+             background-color: #eeeeff; /* Specific lighter background for solenoid */
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Physics Simulations</h1>
+
+    <nav>
+        <a href="solenoid.html" class="active">Solenoid</a>
+        <a href="gravity.html">Gravity / Orbit</a>
+        <!-- Add links to other pages if you create more -->
+    </nav>
+
+    <div class="simulation-container">
+        <h2>Solenoid Magnetic Field (Conceptual 3D)</h2>
+        <p class="description">
+            A 3D representation of a solenoid coil and the conceptual magnetic field lines it generates.
+            Use mouse controls (left: rotate, middle: zoom, right: pan) to explore the view.
+        </p>
+
+        <!-- Container for the Three.js Canvas -->
+        <div id="solenoidContainer" class="threejs-container">
+            <!-- Canvas will be inserted here by solenoid3d.js -->
+        </div>
+
+         <div class="controls">
+             <!-- Add specific solenoid controls here if needed in the future -->
+             <!-- (e.g., sliders for current, turns, etc.) -->
+             <span>(No interactive controls for this simulation yet)</span>
+        </div>
+    </div>
+
+    <!-- Include the Solenoid JavaScript Module -->
+    <script type="module" src="solenoid3d.js"></script>
+
+</body>
+</html>
