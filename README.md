@@ -1,4 +1,3 @@
-# Simulations
 cd path/to/your/Simulations/repo
 git add website/*
 git commit -m "Add fullscreen gravity simulation website"
