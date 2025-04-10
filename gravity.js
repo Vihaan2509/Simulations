@@ -1,193 +1,206 @@
-// --- Gravity Simulation ---
-const gravityCanvas = document.getElementById('gravityCanvas');
-const gravityCtx = gravityCanvas.getContext('2d');
-const gravWidth = gravityCanvas.width;
-const gravHeight = gravityCanvas.height;
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-// Buttons and Checkbox
+// --- DOM Elements ---
+const container = document.getElementById('gravityContainer');
 const startOrbitBtn = document.getElementById('startOrbitBtn');
 const stopOrbitBtn = document.getElementById('stopOrbitBtn');
 const resetOrbitBtn = document.getElementById('resetOrbitBtn');
-const showSpacetimeCheck = document.getElementById('showSpacetimeCheck');
 
+// --- Scene, Camera, Renderer ---
+let scene, camera, renderer;
+let controls; // For mouse interaction
 
-// Simulation Parameters
-const G_scaled = 1000; // Scaled G for visual effect, not real units
-const M_STAR = 1000;    // Mass of the star (arbitrary units)
-const M_PLANET = 1;     // Mass of the planet (arbitrary units)
-const PIXELS_PER_UNIT = 1.5; // Scale simulation units to pixels
-const dt = 0.005;        // Time step for simulation loop
+// --- Simulation Objects ---
+let starMesh, planetMesh;
+let orbitLine; // To draw the trail
 
-let planet = { x: 150, y: 0, vx: 0, vy: 2.5 }; // Initial state (relative to center)
-let star = { x: 0, y: 0 }; // Star at center
-let orbitPath = [];       // To store planet trajectory
-let animationFrameId = null; // To control the loop
+// --- Physics Parameters ---
+const G = 50;         // Gravitational constant (tuned for visualization)
+const M_STAR = 1000;    // Mass of star (visual units)
+const M_PLANET = 1;     // Mass of planet (visual units)
+const dt = 0.01;        // Time step
 
-// Spacetime grid parameters
-const gridSpacing = 20;
-const gridLines = Math.floor(gravWidth / gridSpacing);
-const wellStrength = 15000; // How much the grid dips (visual effect)
+// --- Initial State ---
+const initialPlanetPos = new THREE.Vector3(150, 0, 0); // Start further out in 3D
+const initialPlanetVel = new THREE.Vector3(0, 0, 15);   // Initial velocity in z-direction for XY plane orbit
+const starPos = new THREE.Vector3(0, 0, 0);
 
+let planet = {
+    pos: initialPlanetPos.clone(),
+    vel: initialPlanetVel.clone(),
+    acc: new THREE.Vector3(0, 0, 0)
+};
 
-// --- Coordinate Transformation ---
-function simToCanvas(simX, simY) {
-    return {
-        x: gravWidth / 2 + simX * PIXELS_PER_UNIT,
-        y: gravHeight / 2 - simY * PIXELS_PER_UNIT // Y is inverted in canvas
-    };
+// --- Orbit Trail ---
+const MAX_ORBIT_POINTS = 1000;
+let orbitPoints = [];
+let orbitGeometry;
+let orbitDrawCount = 0;
+
+// --- Animation Control ---
+let animationFrameId = null;
+
+// --- Initialization ---
+function init() {
+    // Scene
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x111122); // Dark space blue
+
+    // Camera
+    const aspect = container.clientWidth / container.clientHeight;
+    camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 5000);
+    camera.position.set(0, 150, 250); // Position camera to view the scene
+    camera.lookAt(scene.position); // Look at the center
+
+    // Renderer
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    container.appendChild(renderer.domElement); // Add canvas to div
+
+    // Lights
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.3); // Soft white light
+    scene.add(ambientLight);
+    const pointLight = new THREE.PointLight(0xffffff, 1.5, 2000); // Light from near the star
+    pointLight.position.set(0, 50, 50);
+    scene.add(pointLight);
+
+    // Controls
+    controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; // Smooth camera movement
+    controls.dampingFactor = 0.05;
+    controls.screenSpacePanning = false;
+    controls.minDistance = 50;
+    controls.maxDistance = 1000;
+
+    // Create Objects
+    createStar();
+    createPlanet();
+    createOrbitTrail();
+
+    // Event Listeners
+    startOrbitBtn.addEventListener('click', startOrbit);
+    stopOrbitBtn.addEventListener('click', stopOrbit);
+    resetOrbitBtn.addEventListener('click', resetOrbit);
+    window.addEventListener('resize', onWindowResize);
+
+    // Initial Reset
+    resetOrbit();
 }
 
-// --- Drawing Functions ---
-function drawStar() {
-    const canvasPos = simToCanvas(star.x, star.y);
-    gravityCtx.beginPath();
-    gravityCtx.arc(canvasPos.x, canvasPos.y, 10, 0, 2 * Math.PI); // Radius 10 pixels
-    gravityCtx.fillStyle = "yellow";
-    gravityCtx.fill();
-    gravityCtx.closePath();
+// --- Object Creation ---
+function createStar() {
+    const geometry = new THREE.SphereGeometry(15, 32, 16); // Larger radius for star
+    const material = new THREE.MeshBasicMaterial({ color: 0xFFFF00, wireframe: false }); // Yellow, simple material
+    // Alternative: Emissive material for glow
+    // const material = new THREE.MeshStandardMaterial({ emissive: 0xffff00, emissiveIntensity: 1 });
+    starMesh = new THREE.Mesh(geometry, material);
+    starMesh.position.copy(starPos);
+    scene.add(starMesh);
 }
 
-function drawPlanet() {
-    const canvasPos = simToCanvas(planet.x, planet.y);
-    gravityCtx.beginPath();
-    gravityCtx.arc(canvasPos.x, canvasPos.y, 5, 0, 2 * Math.PI); // Radius 5 pixels
-    gravityCtx.fillStyle = "blue";
-    gravityCtx.fill();
-    gravityCtx.closePath();
+function createPlanet() {
+    const geometry = new THREE.SphereGeometry(5, 16, 8); // Smaller planet
+    const material = new THREE.MeshStandardMaterial({ color: 0x0077FF, roughness: 0.8, metalness: 0.2 }); // Blueish, slightly rough
+    planetMesh = new THREE.Mesh(geometry, material);
+    planetMesh.position.copy(planet.pos);
+    scene.add(planetMesh);
 }
 
-function drawOrbitPath() {
-    if (orbitPath.length < 2) return;
-    gravityCtx.beginPath();
-    const startPos = simToCanvas(orbitPath[0].x, orbitPath[0].y);
-    gravityCtx.moveTo(startPos.x, startPos.y);
-    for (let i = 1; i < orbitPath.length; i++) {
-        const pos = simToCanvas(orbitPath[i].x, orbitPath[i].y);
-        gravityCtx.lineTo(pos.x, pos.y);
-    }
-    gravityCtx.strokeStyle = "rgba(0, 0, 255, 0.5)"; // Semi-transparent blue
-    gravityCtx.lineWidth = 1;
-    gravityCtx.stroke();
-}
+function createOrbitTrail() {
+    orbitGeometry = new THREE.BufferGeometry();
+    // Pre-allocate buffer large enough for MAX_ORBIT_POINTS
+    const positions = new Float32Array(MAX_ORBIT_POINTS * 3); // x, y, z for each point
+    orbitGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    orbitGeometry.setDrawRange(0, 0); // Initially draw nothing
 
-function drawSpacetimeGrid() {
-    gravityCtx.strokeStyle = "rgba(100, 100, 100, 0.5)"; // Light gray grid
-    gravityCtx.lineWidth = 0.5;
-    const starCanvasPos = simToCanvas(star.x, star.y);
-
-    for (let i = 0; i <= gridLines; i++) {
-        // Vertical lines
-        gravityCtx.beginPath();
-        let startX = i * gridSpacing;
-        let startY = 0;
-        gravityCtx.moveTo(startX, startY);
-        for (let y = 1; y <= gravHeight; y++) {
-            let currentX = startX;
-            let currentY = y;
-             // Calculate distance from star IN CANVAS COORDINATES for visual effect
-            let dx = currentX - starCanvasPos.x;
-            let dy = currentY - starCanvasPos.y;
-            let distSq = dx * dx + dy * dy;
-            let offsetFactor = wellStrength / (distSq + 100); // Avoid division by zero, +100 softens the center
-            let offsetX = dx * offsetFactor / Math.sqrt(distSq + 1); // Normalized direction * offset
-            let offsetY = dy * offsetFactor / Math.sqrt(distSq + 1);
-
-            gravityCtx.lineTo(currentX - offsetX, currentY - offsetY); // Draw segment towards star
-        }
-        gravityCtx.stroke();
-
-        // Horizontal lines (similar logic)
-         gravityCtx.beginPath();
-         let startY_h = i * gridSpacing;
-         let startX_h = 0;
-         gravityCtx.moveTo(startX_h, startY_h);
-         for(let x = 1; x <= gravWidth; x++){
-            let currentX = x;
-            let currentY = startY_h;
-            let dx = currentX - starCanvasPos.x;
-            let dy = currentY - starCanvasPos.y;
-            let distSq = dx * dx + dy * dy;
-            let offsetFactor = wellStrength / (distSq + 100);
-            let offsetX = dx * offsetFactor / Math.sqrt(distSq + 1);
-            let offsetY = dy * offsetFactor / Math.sqrt(distSq + 1);
-            gravityCtx.lineTo(currentX - offsetX, currentY - offsetY);
-         }
-         gravityCtx.stroke();
-    }
+    const material = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 1 }); // Cyan color trail
+    orbitLine = new THREE.Line(orbitGeometry, material);
+    scene.add(orbitLine);
 }
 
 
-// --- Physics Update ---
-function updateOrbit() {
-    // Calculate distance and direction vector from planet to star
-    const dx = star.x - planet.x;
-    const dy = star.y - planet.y;
-    const distSq = dx * dx + dy * dy;
-    const dist = Math.sqrt(distSq);
+// --- Physics Update (3D) ---
+function updatePhysics() {
+    // Vector from planet to star
+    const diff = new THREE.Vector3().subVectors(starPos, planet.pos);
+    const distSq = diff.lengthSq();
 
-    if (dist < 1) { // Avoid division by zero / extreme forces
-        console.warn("Planet too close to star!");
+    if (distSq < 25) { // Collision check (approx radius squared)
+        console.warn("Collision detected!");
         stopOrbit();
         return;
     }
 
-    // Calculate gravitational force magnitude
-    const forceMag = (G_scaled * M_STAR * M_PLANET) / distSq;
+    const dist = Math.sqrt(distSq);
 
-    // Calculate force components
-    const forceX = forceMag * (dx / dist);
-    const forceY = forceMag * (dy / dist);
+    // Force magnitude: F = G * M * m / r^2
+    const forceMag = (G * M_STAR * M_PLANET) / distSq;
 
-    // Calculate acceleration (a = F/m)
-    const accelX = forceX / M_PLANET;
-    const accelY = forceY / M_PLANET;
+    // Acceleration: a = F / m_planet = G * M_STAR / r^2 * (direction vector)
+    planet.acc.copy(diff).normalize().multiplyScalar((G * M_STAR) / distSq);
 
-    // Update velocity (Euler method)
-    planet.vx += accelX * dt;
-    planet.vy += accelY * dt;
+    // Update velocity: v_new = v_old + a * dt
+    planet.vel.addScaledVector(planet.acc, dt);
 
-    // Update position
-    planet.x += planet.vx * dt;
-    planet.y += planet.vy * dt;
+    // Update position: p_new = p_old + v_new * dt
+    planet.pos.addScaledVector(planet.vel, dt);
+}
 
-    // Store path (limit length for performance)
-    orbitPath.push({ x: planet.x, y: planet.y });
-    if (orbitPath.length > 1000) {
-        orbitPath.shift(); // Remove oldest point
+// --- Update Visuals ---
+function updateVisuals() {
+    // Update planet mesh position
+    planetMesh.position.copy(planet.pos);
+
+    // Update orbit trail
+    const positions = orbitGeometry.attributes.position.array;
+    const index = orbitDrawCount * 3;
+
+    if (orbitDrawCount < MAX_ORBIT_POINTS) {
+        positions[index] = planet.pos.x;
+        positions[index + 1] = planet.pos.y;
+        positions[index + 2] = planet.pos.z;
+        orbitDrawCount++;
+        orbitGeometry.setDrawRange(0, orbitDrawCount); // Update how much of the line to draw
+        orbitGeometry.attributes.position.needsUpdate = true; // Important! Tell Three.js buffer changed
+    } else {
+        // Shift points if buffer is full (less efficient but works)
+        for (let i = 0; i < MAX_ORBIT_POINTS - 1; i++) {
+             positions[i*3] = positions[(i+1)*3];
+             positions[i*3+1] = positions[(i+1)*3+1];
+             positions[i*3+2] = positions[(i+1)*3+2];
+        }
+        positions[(MAX_ORBIT_POINTS-1)*3] = planet.pos.x;
+        positions[(MAX_ORBIT_POINTS-1)*3+1] = planet.pos.y;
+        positions[(MAX_ORBIT_POINTS-1)*3+2] = planet.pos.z;
+        orbitGeometry.attributes.position.needsUpdate = true;
+        // Draw range stays at MAX_ORBIT_POINTS
     }
 }
 
+
 // --- Animation Loop ---
-function gameLoop() {
-    // Clear canvas
-    gravityCtx.clearRect(0, 0, gravWidth, gravHeight);
-    gravityCtx.fillStyle = "#111111"; // Dark background for space
-    gravityCtx.fillRect(0, 0, gravWidth, gravHeight);
+function animate() {
+    animationFrameId = requestAnimationFrame(animate);
 
+    // Update physics state
+    updatePhysics();
 
-    // Update physics
-    updateOrbit();
+    // Update visual representation
+    updateVisuals();
 
-    // Draw elements
-    if (showSpacetimeCheck.checked) {
-        drawSpacetimeGrid();
-    }
-    drawOrbitPath();
-    drawStar();
-    drawPlanet();
+    // Update camera controls
+    controls.update();
 
-    // Request next frame
-    animationFrameId = requestAnimationFrame(gameLoop);
+    // Render the scene
+    renderer.render(scene, camera);
 }
 
 // --- Control Functions ---
 function startOrbit() {
     if (animationFrameId === null) { // Prevent multiple loops
-        if (orbitPath.length === 0) { // Reset if starting from scratch
-            resetOrbit();
-        }
-        animationFrameId = requestAnimationFrame(gameLoop);
-        console.log("Orbit simulation started.");
+        animate();
+        console.log("3D Orbit simulation started.");
     }
 }
 
@@ -195,32 +208,42 @@ function stopOrbit() {
     if (animationFrameId !== null) {
         cancelAnimationFrame(animationFrameId);
         animationFrameId = null;
-        console.log("Orbit simulation stopped.");
+        console.log("3D Orbit simulation stopped.");
     }
 }
 
 function resetOrbit() {
     stopOrbit();
-    planet = { x: 150, y: 0, vx: 0, vy: 2.5 }; // Reset to initial state
-    orbitPath = [];
-    // Initial draw after reset
-    gravityCtx.clearRect(0, 0, gravWidth, gravHeight);
-    gravityCtx.fillStyle = "#111111";
-    gravityCtx.fillRect(0, 0, gravWidth, gravHeight);
-    if (showSpacetimeCheck.checked) {
-        drawSpacetimeGrid();
-    }
-     drawOrbitPath();
-    drawStar();
-    drawPlanet();
-    console.log("Orbit simulation reset.");
+    // Reset physics state
+    planet.pos.copy(initialPlanetPos);
+    planet.vel.copy(initialPlanetVel);
+    planet.acc.set(0, 0, 0);
+
+    // Reset visual state
+    planetMesh.position.copy(planet.pos);
+
+    // Reset orbit trail
+    orbitDrawCount = 0;
+    orbitGeometry.setDrawRange(0, 0);
+    orbitGeometry.attributes.position.needsUpdate = true; // Clear the line visually
+    orbitPoints = []; // Also clear intermediate array if used
+
+    // Render one frame to show the reset state
+    renderer.render(scene, camera);
+    console.log("3D Orbit simulation reset.");
 }
 
-// --- Event Listeners ---
-startOrbitBtn.addEventListener('click', startOrbit);
-stopOrbitBtn.addEventListener('click', stopOrbit);
-resetOrbitBtn.addEventListener('click', resetOrbit);
-showSpacetimeCheck.addEventListener('change', resetOrbit); // Redraw grid immediately on change
+// --- Window Resize Handler ---
+function onWindowResize() {
+    const width = container.clientWidth;
+    const height = container.clientHeight;
 
-// Initial draw on page load
-resetOrbit(); // Draw the initial state
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+
+    renderer.setSize(width, height);
+    renderer.render(scene, camera); // Render on resize
+}
+
+// --- Start ---
+init();
